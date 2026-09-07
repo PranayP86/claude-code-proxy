@@ -1,0 +1,50 @@
+# Homelab build of the upstream source at the checked-out commit. Produces the
+# same linux-amd64 archive and .sha256 the upstream release workflow publishes,
+# attached to a GitHub release on this fork, so the homelab Dockerfile can pin
+# a commit that upstream has not released yet.
+name: homelab linux-amd64
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to create, v<Cargo.toml version>-<suffix>
+        required: true
+
+permissions:
+  contents: write
+
+env:
+  BIN_NAME: claude-code-proxy
+  TARGET: x86_64-unknown-linux-gnu
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: x86_64-unknown-linux-gnu
+      - name: Build
+        run: cargo build --release --locked --target "$TARGET"
+      - name: Verify binary
+        run: |
+          cargo_version="$(grep -m1 '^version = ' Cargo.toml | cut -d'"' -f2)"
+          actual="$(target/$TARGET/release/$BIN_NAME --version)"
+          test "$actual" = "$BIN_NAME $cargo_version"
+      - name: Package
+        run: |
+          cp "target/$TARGET/release/$BIN_NAME" .
+          tar -czf "$BIN_NAME-linux-amd64.tar.gz" "$BIN_NAME"
+          shasum -a 256 "$BIN_NAME-linux-amd64.tar.gz" > "$BIN_NAME-linux-amd64.sha256"
+          cat "$BIN_NAME-linux-amd64.sha256"
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ inputs.tag }}" \
+            --target "$GITHUB_SHA" \
+            --title "${{ inputs.tag }}" \
+            --notes "linux-amd64 build of $GITHUB_SHA for the homelab dsh-codex image." \
+            "$BIN_NAME-linux-amd64.tar.gz" "$BIN_NAME-linux-amd64.sha256"
