@@ -49,6 +49,7 @@ pub(crate) const CODEX_MODELS: &[&str] = &[
     "gpt-5.6-sol",
     "gpt-5.6-terra",
     "gpt-6-astra",
+    "gpt-6.2-astra",
     "gpt-6-luna",
     "gpt-6-sol",
     "gpt-6.1-sol",
@@ -434,6 +435,8 @@ mod tests {
             "gpt-6.1-sol-fast",
             "gpt-6.1-terra",
             "gpt-6.1-terra-fast",
+            "gpt-6.2-astra",
+            "gpt-6.2-astra-fast",
         ] {
             assert_eq!(
                 registry.provider_for_model(model, None).unwrap().name(),
